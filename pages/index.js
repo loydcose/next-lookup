@@ -6,7 +6,7 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-export default function Home({ jobs, scrapedAt, now }) {
+export default function Home({ jobs, scrapedAt }) {
   return (
     <div className={`${geistSans.className} min-h-screen bg-stone-100 text-stone-900`}>
       <Head>
@@ -31,11 +31,21 @@ export default function Home({ jobs, scrapedAt, now }) {
 
 export async function getServerSideProps() {
   const { readJobsFile } = await import("../scraper/jobs.js");
+  const { shouldKeepJob } = await import("../lib/job-utils.js");
+  const { EXCLUDE_KEYWORDS, JOB_MAX_AGE_DAYS } = await import("../config.js");
   const data = readJobsFile();
+  const now = Date.now();
+  const jobs = (data.jobs || []).filter((job) =>
+    shouldKeepJob(job, {
+      excludeKeywords: EXCLUDE_KEYWORDS,
+      maxAgeDays: JOB_MAX_AGE_DAYS,
+      now,
+    }),
+  );
 
   return {
     props: {
-      jobs: data.jobs,
+      jobs,
       scrapedAt: data.scrapedAt,
     },
   };

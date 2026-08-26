@@ -1,45 +1,34 @@
+import { useEffect, useState } from "react";
 import JobCard from "./JobCard";
-import {
-  EXCLUDE_KEYWORDS,
-  INTEREST_KEYWORDS,
-  JOB_MAX_AGE_DAYS,
-} from "../config";
-import { useSeenJobs } from "../hooks/useSeenJobs";
-import { formatTimeAgo, isRelevantJob, shouldKeepJob, sortJobs } from "../lib/job-utils";
+import { INTEREST_KEYWORDS } from "../config";
+import { useOpenedJobs } from "../hooks/useOpenedJobs";
+import { isRelevantJob, sortJobs } from "../lib/job-utils";
+import TimeAgo from "./TimeAgo";
+import { useSeenJobs } from "@/hooks/useSeenJobs";
 
-function formatScrapedAt(scrapedAt) {
-  const ago = formatTimeAgo(scrapedAt);
-
-  if (!ago) {
-    return "Not scraped yet";
-  }
-
-  return `Last scrape ${ago}`;
+function EmptyJobs() {
+  return (
+    <div className="rounded-xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
+      <h2 className="text-lg font-semibold text-stone-900">No jobs yet</h2>
+      <p className="mt-2 text-sm text-stone-500">
+        The scraper runs when the app starts, then every 15 minutes. You can
+        also run <code className="rounded bg-stone-100 px-1.5 py-0.5">npm run scrape</code>.
+      </p>
+    </div>
+  );
 }
 
 export default function JobList({ jobs, scrapedAt }) {
-  const visibleJobs = jobs.filter((job) =>
-    shouldKeepJob(job, {
-      excludeKeywords: EXCLUDE_KEYWORDS,
-      maxAgeDays: JOB_MAX_AGE_DAYS,
-    }),
-  );
-  const { isUnread, isReady } = useSeenJobs(visibleJobs);
+  const [hasMounted, setHasMounted] = useState(false);
+  const { isUnread, isReady } = useSeenJobs(jobs);
+  const { isOpened, markOpened } = useOpenedJobs();
 
-  if (!visibleJobs.length) {
-    return (
-      <div className="rounded-xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
-        <h2 className="text-lg font-semibold text-stone-900">No jobs yet</h2>
-        <p className="mt-2 text-sm text-stone-500">
-          The scraper runs when the app starts, then every 15 minutes. You can
-          also run <code className="rounded bg-stone-100 px-1.5 py-0.5">npm run scrape</code>.
-        </p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
-  const orderedJobs = sortJobs(visibleJobs, {
-    isUnread,
+  const orderedJobs = sortJobs(jobs, {
+    isUnread: hasMounted ? isUnread : () => false,
     isRelevant: (job) => isRelevantJob(job, INTEREST_KEYWORDS),
   });
 
@@ -48,15 +37,17 @@ export default function JobList({ jobs, scrapedAt }) {
     isRelevantJob(job, INTEREST_KEYWORDS),
   ).length;
 
-  return (
+  return jobs.length === 0 ? (
+    <EmptyJobs />
+  ) : (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <p className="text-sm text-stone-500" suppressHydrationWarning>
-          {formatScrapedAt(scrapedAt)}
+        <p className="text-sm text-stone-500">
+          <TimeAgo value={scrapedAt} prefix="Last scrape " />
         </p>
         <p className="text-sm text-stone-500">
-          {visibleJobs.length} jobs
-          {isReady ? ` · ${unreadCount} new` : ""} · {relevantCount} relevant
+          {jobs.length} jobs
+          {hasMounted && isReady ? ` · ${unreadCount} new` : ""} · {relevantCount} relevant
         </p>
       </div>
 
@@ -67,6 +58,8 @@ export default function JobList({ jobs, scrapedAt }) {
             job={job}
             isUnread={isUnread(job.id)}
             isRelevant={isRelevantJob(job, INTEREST_KEYWORDS)}
+            isOpened={isOpened(job.id)}
+            onOpenJob={markOpened}
           />
         ))}
       </div>

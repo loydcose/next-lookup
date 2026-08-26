@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useHasHydrated } from "./useHasHydrated";
 
 const STORAGE_KEY = "seenJobIds";
 
@@ -12,6 +13,7 @@ function readSeenIds() {
 }
 
 export function useSeenJobs(jobs) {
+  const hasHydrated = useHasHydrated();
   const snapshotRef = useRef(null);
   const [seenIdsAtLoad, setSeenIdsAtLoad] = useState(() => new Set());
   const [isReady, setIsReady] = useState(false);
@@ -34,7 +36,7 @@ export function useSeenJobs(jobs) {
   }, [jobs]);
 
   function isUnread(jobId) {
-    if (!isReady) {
+    if (!hasHydrated || !isReady) {
       return false;
     }
 
