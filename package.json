@@ -2,13 +2,18 @@
   "name": "next-lookup",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently -n web,scrape -c cyan,yellow \"next dev\" \"node scripts/scrape-loop.js\"",
+    "dev:web": "next dev",
+    "scrape": "node scripts/scrape-once.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
+    "concurrently": "^10.0.5",
     "next": "16.3.3",
     "react": "19.2.8",
     "react-dom": "19.2.8"
