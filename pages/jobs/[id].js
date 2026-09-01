@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Geist } from "next/font/google";
 import TimeAgo from "../../components/TimeAgo";
 import { useOpenedJobs } from "../../hooks/useOpenedJobs";
+import { DEFAULT_COVER_LETTER } from "../../config";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -27,17 +28,6 @@ function employmentTypeClass(type) {
   return "bg-stone-200 text-stone-700";
 }
 
-function mockCoverLetter(title) {
-  return `Hello,
-
-I am writing to apply for the ${title} role. I have experience with React and Next.js, and I would welcome the chance to discuss how I can help.
-
-I can start quickly, communicate clearly, and ship work you can review in production.
-
-Best regards,
-[Your Name]`;
-}
-
 const toolbarButtonClass =
   "rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -57,7 +47,7 @@ function SummaryList({ title, items }) {
 export default function JobDetailsPage({ job, description, descriptionError }) {
   const { markOpened } = useOpenedJobs();
   const coverLetterRef = useRef(null);
-  const [versions, setVersions] = useState(() => [mockCoverLetter(job.title)]);
+  const [versions, setVersions] = useState(() => [DEFAULT_COVER_LETTER]);
   const [versionIndex, setVersionIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [aiAction, setAiAction] = useState(null);
@@ -78,7 +68,7 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
   }, [job.id]);
 
   useEffect(() => {
-    setVersions([mockCoverLetter(job.title)]);
+    setVersions([DEFAULT_COVER_LETTER]);
     setVersionIndex(0);
     setCopied(false);
     setAiError(null);
@@ -87,7 +77,7 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
     setShowingSummary(false);
     setSummaryBusy(false);
     setSummaryError(null);
-  }, [job.id, job.title]);
+  }, [job.id]);
 
   function updateCurrentLetter(text) {
     setVersions((prev) =>
