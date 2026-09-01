@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import TimeAgo from "./TimeAgo";
 
 function employmentTypeClass(type) {
@@ -86,22 +87,26 @@ export default function JobCard({ job, isUnread, isRelevant, isOpened, onOpenJob
         <p className="mt-3 text-sm leading-6 text-stone-600">{job.snippet}</p>
       ) : null}
 
-      <a
-        href={job.url}
-        target="_blank"
-        rel="noreferrer"
-        onClick={() => onOpenJob(job.id)}
-        className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-stone-700 underline-offset-2 hover:underline"
-      >
-        {showOpened ? (
-          <>
-            <CheckIcon />
-            Opened job post
-          </>
-        ) : (
-          "Open job post"
-        )}
-      </a>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <Link
+          href={`/jobs/${job.id}`}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => onOpenJob(job.id)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-700 underline-offset-2 hover:underline"
+        >
+          {showOpened ? <CheckIcon /> : null}
+          See job details
+        </Link>
+        <a
+          href={job.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm font-medium text-stone-700 underline-offset-2 hover:underline"
+        >
+          Open job post
+        </a>
+      </div>
     </article>
   );
 }

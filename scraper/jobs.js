@@ -1,5 +1,3 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import * as cheerio from "cheerio";
 import {
   EXCLUDE_KEYWORDS,
@@ -8,9 +6,9 @@ import {
   PAGE_DELAY_MS,
   SEARCH_URL,
 } from "../config.js";
+import { listJobs, upsertJobs } from "../lib/db.js";
 import { isRecentJob, shouldKeepJob } from "../lib/job-utils.js";
 
-const JOBS_FILE_PATH = path.join(process.cwd(), "data", "jobs.json");
 const SITE_ORIGIN = "https://www.onlinejobs.ph";
 
 const REQUEST_HEADERS = {
@@ -23,27 +21,39 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function emptyJobsFile() {
-  return { scrapedAt: null, jobs: [] };
+function descriptionFromHtml(html) {
+  return (html || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
-export function readJobsFile() {
-  try {
-    const raw = readFileSync(JOBS_FILE_PATH, "utf8");
-    const parsed = JSON.parse(raw);
+export async function scrapeJobDescription(url) {
+  const html = await fetchListingHtml(url);
+  const $ = cheerio.load(html);
+  const $description = $("#job-description").first();
 
-    return {
-      scrapedAt: parsed.scrapedAt || null,
-      jobs: Array.isArray(parsed.jobs) ? parsed.jobs : [],
-    };
-  } catch {
-    return emptyJobsFile();
+  if ($description.length === 0) {
+    throw new Error("Job description not found on the listing page");
   }
-}
 
-export function writeJobsFile(data) {
-  mkdirSync(path.dirname(JOBS_FILE_PATH), { recursive: true });
-  writeFileSync(JOBS_FILE_PATH, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+  const description = descriptionFromHtml($description.html());
+
+  if (!description) {
+    throw new Error("Job description was empty");
+  }
+
+  return description;
 }
 
 export function buildPageUrl(offset) {
@@ -149,7 +159,7 @@ export function mergeJobs(existingJobs, incomingJobs, scrapedAt) {
 
 export async function runScrape() {
   const scrapedAt = new Date().toISOString();
-  const existing = readJobsFile();
+  const existing = await listJobs();
   const incomingJobs = [];
   let totalJobCount = null;
   let offset = 0;
@@ -208,10 +218,10 @@ export async function runScrape() {
   }
 
   const jobs = mergeJobs(existing.jobs, incomingJobs, scrapedAt);
-  writeJobsFile({ scrapedAt, jobs });
+  await upsertJobs(jobs, scrapedAt);
 
   console.log(
-    `Saved ${jobs.length} jobs to data/jobs.json (${incomingJobs.length} from this scrape)`,
+    `Saved ${jobs.length} jobs (${incomingJobs.length} from this scrape)`,
   );
 
   return { scrapedAt, jobs };

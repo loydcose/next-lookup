@@ -30,10 +30,10 @@ export default function Home({ jobs, scrapedAt }) {
 }
 
 export async function getServerSideProps() {
-  const { readJobsFile } = await import("../scraper/jobs.js");
+  const { listJobs } = await import("../lib/db.js");
   const { shouldKeepJob } = await import("../lib/job-utils.js");
   const { EXCLUDE_KEYWORDS, JOB_MAX_AGE_DAYS } = await import("../config.js");
-  const data = readJobsFile();
+  const data = await listJobs();
   const now = Date.now();
   const jobs = (data.jobs || []).filter((job) =>
     shouldKeepJob(job, {
