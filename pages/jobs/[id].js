@@ -41,6 +41,19 @@ Best regards,
 const toolbarButtonClass =
   "rounded-md border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50";
 
+function SummaryList({ title, items }) {
+  return (
+    <section>
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-stone-500">{title}</h3>
+      <ul className="mt-1.5 list-disc space-y-1 pl-4">
+        {items.map((item, index) => (
+          <li key={index}>{item}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export default function JobDetailsPage({ job, description, descriptionError }) {
   const { markOpened } = useOpenedJobs();
   const coverLetterRef = useRef(null);
@@ -49,9 +62,14 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
   const [copied, setCopied] = useState(false);
   const [aiAction, setAiAction] = useState(null);
   const [aiError, setAiError] = useState(null);
+  const [jobSummary, setJobSummary] = useState(null);
+  const [showingSummary, setShowingSummary] = useState(false);
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [summaryError, setSummaryError] = useState(null);
 
   const currentLetter = versions[versionIndex] ?? "";
   const hasLetter = currentLetter.trim().length > 0;
+  const hasDescription = description.trim().length > 0;
   const versionCount = versions.length;
   const aiBusy = Boolean(aiAction);
 
@@ -65,6 +83,10 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
     setCopied(false);
     setAiError(null);
     setAiAction(null);
+    setJobSummary(null);
+    setShowingSummary(false);
+    setSummaryBusy(false);
+    setSummaryError(null);
   }, [job.id, job.title]);
 
   function updateCurrentLetter(text) {
@@ -114,6 +136,38 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
     }
   }
 
+  async function summarizeJob() {
+    if (summaryBusy || !hasDescription || jobSummary) {
+      return;
+    }
+
+    setSummaryBusy(true);
+    setSummaryError(null);
+
+    try {
+      const response = await fetch("/api/job-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: job.title, description }),
+      });
+      const data = await response.json().catch(() => ({}));
+      const requirements = Array.isArray(data.requirements) ? data.requirements : null;
+      const summary = Array.isArray(data.summary) ? data.summary : null;
+
+      if (!response.ok || !requirements || !summary) {
+        setSummaryError(data.error || "Could not summarize the job. Try again.");
+        return;
+      }
+
+      setJobSummary({ requirements, summary });
+      setShowingSummary(true);
+    } catch {
+      setSummaryError("Could not summarize the job. Try again.");
+    } finally {
+      setSummaryBusy(false);
+    }
+  }
+
   return (
     <div className={`${geistSans.className} flex h-dvh flex-col overflow-hidden bg-stone-100 text-stone-900`}>
       <Head>
@@ -159,9 +213,41 @@ export default function JobDetailsPage({ job, description, descriptionError }) {
               </p>
             ) : null}
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 whitespace-pre-wrap text-sm leading-5 text-stone-700">
-            {description}
+          <div className="flex shrink-0 items-center justify-end gap-2 border-b border-stone-200 px-3 py-2">
+            {jobSummary ? (
+              <button
+                type="button"
+                onClick={() => setShowingSummary((value) => !value)}
+                className={toolbarButtonClass}
+              >
+                {showingSummary ? "Show original" : "Show summary"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={summarizeJob}
+                disabled={summaryBusy || !hasDescription}
+                className={toolbarButtonClass}
+              >
+                {summaryBusy ? "Working..." : "Summarize"}
+              </button>
+            )}
           </div>
+          {summaryError ? (
+            <p className="shrink-0 border-b border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-800">
+              {summaryError}
+            </p>
+          ) : null}
+          {showingSummary && jobSummary ? (
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-2 text-sm leading-5 text-stone-700">
+              <SummaryList title="For your cover letter" items={jobSummary.requirements} />
+              <SummaryList title="Overview" items={jobSummary.summary} />
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2 whitespace-pre-wrap text-sm leading-5 text-stone-700">
+              {description}
+            </div>
+          )}
         </section>
 
         <section className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-stone-300 bg-white">
