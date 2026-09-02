@@ -1,0 +1,21 @@
+# Pauses after 60 days with no repo activity. A commit or manual "Run workflow" resets that.
+name: Scrape jobs
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ping scrape API
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SCRAPE_URL: ${{ secrets.SCRAPE_URL }}
+        run: |
+          curl -fsS --max-time 300 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "${SCRAPE_URL}?source=github"

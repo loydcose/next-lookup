@@ -4,9 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n web,scrape -c cyan,yellow \"next dev\" \"node scripts/scrape-loop.js\"",
-    "dev:web": "next dev",
-    "scrape": "node scripts/scrape-once.js",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -14,10 +12,10 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
     "cheerio": "^1.2.0",
-    "concurrently": "^10.0.5",
     "next": "16.3.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "resend": "^6.25.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

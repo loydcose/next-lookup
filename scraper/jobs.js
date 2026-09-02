@@ -146,6 +146,7 @@ export function mergeJobs(existingJobs, incomingJobs, scrapedAt) {
       ...incoming,
       firstSeenAt: previous?.firstSeenAt || scrapedAt,
       lastSeenAt: scrapedAt,
+      notifiedAt: previous?.notifiedAt || null,
     });
   }
 
@@ -220,9 +221,11 @@ export async function runScrape() {
   const jobs = mergeJobs(existing.jobs, incomingJobs, scrapedAt);
   await upsertJobs(jobs, scrapedAt);
 
+  const newJobs = jobs.filter((job) => job.firstSeenAt === scrapedAt);
+
   console.log(
-    `Saved ${jobs.length} jobs (${incomingJobs.length} from this scrape)`,
+    `Saved ${jobs.length} jobs (${incomingJobs.length} from this scrape, ${newJobs.length} new)`,
   );
 
-  return { scrapedAt, jobs };
+  return { scrapedAt, jobs, newJobs };
 }
