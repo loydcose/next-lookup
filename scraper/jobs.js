@@ -136,21 +136,31 @@ export function parseJobCards(html) {
 }
 
 export function mergeJobs(existingJobs, incomingJobs, scrapedAt) {
-  const jobsByUrl = new Map(existingJobs.map((job) => [job.url, job]));
+  const jobsById = new Map(
+    existingJobs.map((job) => [String(job.id), job]),
+  );
 
   for (const incoming of incomingJobs) {
-    const previous = jobsByUrl.get(incoming.url);
+    const id = String(incoming.id);
+    const previous = jobsById.get(id);
 
-    jobsByUrl.set(incoming.url, {
+    if (previous?.url && previous.url !== incoming.url) {
+      console.log(
+        `Job ${id} url changed: ${previous.url} -> ${incoming.url}`,
+      );
+    }
+
+    jobsById.set(id, {
       ...previous,
       ...incoming,
+      id,
       firstSeenAt: previous?.firstSeenAt || scrapedAt,
       lastSeenAt: scrapedAt,
       notifiedAt: previous?.notifiedAt || null,
     });
   }
 
-  return [...jobsByUrl.values()].filter((job) =>
+  return [...jobsById.values()].filter((job) =>
     shouldKeepJob(job, {
       excludeKeywords: EXCLUDE_KEYWORDS,
       maxAgeDays: JOB_MAX_AGE_DAYS,
