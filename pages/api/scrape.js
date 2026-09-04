@@ -7,7 +7,7 @@ import {
 } from "../../lib/auth.js";
 import { upsertJobs } from "../../lib/db.js";
 import { isRelevantJob } from "../../lib/job-utils.js";
-import { canSendAlerts, sendNewJobsEmail } from "../../lib/notify.js";
+import { canSendAlerts, sendNewJobsAlert } from "../../lib/notify.js";
 import { runScrape } from "../../scraper/jobs.js";
 
 function bearerMatches(header, secret) {
@@ -74,7 +74,7 @@ export default async function handler(req, res) {
       scrapedAt,
       jobCount: jobs.length,
       newCount: newJobs.length,
-      emailed: 0,
+      notified: 0,
     };
 
     if (!fromGithub) {
@@ -90,12 +90,12 @@ export default async function handler(req, res) {
     }
 
     if (!canSendAlerts()) {
-      payload.warning = "RESEND_API_KEY or ALERT_EMAIL is not set";
+      payload.warning = "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set";
       res.status(200).json(payload);
       return;
     }
 
-    await sendNewJobsEmail(pending);
+    await sendNewJobsAlert(pending);
 
     const notifiedAt = new Date().toISOString();
     const notifiedIds = new Set(pending.map((job) => job.id));
@@ -104,7 +104,7 @@ export default async function handler(req, res) {
     );
 
     await upsertJobs(updatedJobs, scrapedAt);
-    payload.emailed = pending.length;
+    payload.notified = pending.length;
     res.status(200).json(payload);
   } catch (error) {
     console.error("Scrape failed:", error);
