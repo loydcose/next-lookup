@@ -15,6 +15,16 @@ export const INTEREST_KEYWORDS = [
   "nextjs",
   "next.js",
   "next js",
+  "full stack",
+  "full-stack",
+  "software developer",
+  "web developer",
+  "saas",
+  "website developer",
+  "supabase",
+  "postgresql",
+  "vercel",
+  "mvp",
 ];
 
 export const EXCLUDE_KEYWORDS = [
@@ -26,6 +36,10 @@ export const EXCLUDE_KEYWORDS = [
   "virtual assistant",
   "game dev",
   "game developer",
+  "automation",
+  "c#",
+  "laravel",
+  "php",
 ];
 
 export const DEFAULT_COVER_LETTER = `Hello,
