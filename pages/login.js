@@ -1,15 +1,11 @@
 import Head from "next/head";
-import { Geist } from "next/font/google";
 import {
   COOKIE_NAME,
   isAuthRequired,
   safeNextPath,
   verifyAuthToken,
-} from "../lib/auth.js";
-
-const geistSans = Geist({
-  subsets: ["latin"],
-});
+} from "@/lib/auth";
+import { geistSans } from "@/lib/fonts";
 
 export default function Login({ next, error }) {
   return (

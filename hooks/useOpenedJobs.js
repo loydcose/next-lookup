@@ -1,16 +1,8 @@
 import { useEffect, useState } from "react";
 import { useHasHydrated } from "./useHasHydrated";
+import { readIdList, writeIdList } from "@/lib/local-storage";
 
 const STORAGE_KEY = "openedJobIds";
-
-function readOpenedIds() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 export function useOpenedJobs() {
   const hasHydrated = useHasHydrated();
@@ -18,7 +10,7 @@ export function useOpenedJobs() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    setOpenedIds(new Set(readOpenedIds()));
+    setOpenedIds(new Set(readIdList(STORAGE_KEY)));
     setIsReady(true);
   }, []);
 
@@ -38,7 +30,7 @@ export function useOpenedJobs() {
 
       const next = new Set(current);
       next.add(jobId);
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
+      writeIdList(STORAGE_KEY, next);
       return next;
     });
   }

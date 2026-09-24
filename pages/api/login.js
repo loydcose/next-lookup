@@ -1,15 +1,14 @@
+import { allowMethod } from "@/lib/api";
 import {
   authCookieHeader,
   createAuthToken,
   isAuthRequired,
   passwordsMatch,
   safeNextPath,
-} from "../../lib/auth.js";
+} from "@/lib/auth";
 
 export default function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    res.status(405).end("Method Not Allowed");
+  if (!allowMethod(req, res, "POST")) {
     return;
   }
 

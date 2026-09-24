@@ -1,40 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+# Next Look Up
 
-## Getting Started
+Scrapes developer listings from OnlineJobs.ph, stores them in MongoDB, and sends Telegram alerts for relevant new jobs. Each job page includes an AI job summary and a cover letter editor powered by Groq.
 
-First, run the development server:
+## Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev      # start the app on http://localhost:3000
+npm run scrape   # scrape once from your machine (no Telegram alerts)
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+In production, `.github/workflows/scrape.yml` calls `GET /api/scrape?source=github` every 15 minutes. That is the only path that sends Telegram alerts.
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
+## Environment variables (`.env`)
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+| Variable | Used for |
+| --- | --- |
+| `MONGODB_URI` | MongoDB connection string. The database name goes in the path (`.../next-lookup?...`). |
+| `SITE_PASSWORD`, `AUTH_SECRET` | Password gate for the site. Leave `SITE_PASSWORD` empty to disable it. |
+| `CRON_SECRET` | Bearer token the GitHub workflow sends to `/api/scrape`. |
+| `GROQ_API_KEY` | Job summaries and cover letter rewrites. |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | New-job alerts. |
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+## Project structure
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+config/                  Settings you edit by hand
+  search.js              Search URL, page size, max job age
+  keywords.js            Interest keywords (starred + alerted) and exclude keywords (dropped)
+  cover-letter.js        Default cover letter text
 
-## Learn More
+lib/                     Server and shared logic
+  db.js                  MongoDB access: listJobs, getJobById, upsertJobs
+  scraper/
+    onlinejobs.js        Fetch + parse onlinejobs.ph pages
+    run-scrape.js        Crawl listing pages, merge with stored jobs, save
+  jobs/
+    filters.js           Relevance, exclusion, age filtering, sorting
+    dates.js             Parse job dates, "3 hours ago" formatting
+  telegram.js            Telegram alert messages
+  groq.js                Groq chat client
+  auth.js                Site password cookie + cron bearer check
+  api.js                 API route helpers
+  env.js                 .env loader for plain Node scripts
+  fonts.js, local-storage.js
 
-To learn more about Next.js, take a look at the following resources:
+components/
+  jobs/                  Home page: JobList, JobCard
+  job-details/           Job page: JobDescriptionPanel, CoverLetterPanel
+  ui/                    Small shared pieces: TimeAgo, EmploymentTypeBadge, ToolbarButton
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+hooks/                   Browser-side state (seen/opened jobs in localStorage)
+pages/                   Routes and API routes
+scripts/scrape.js        Entry point for `npm run scrape`
+proxy.js                 Redirects to /login when the password gate is on
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+Files under `lib/` and `config/` use relative imports because `npm run scrape` runs them with plain Node. Everything else uses the `@/` alias.

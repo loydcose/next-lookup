@@ -1,45 +1,34 @@
-import { useEffect, useState } from "react";
-import JobCard from "./JobCard";
-import { INTEREST_KEYWORDS } from "../config";
-import { useOpenedJobs } from "../hooks/useOpenedJobs";
-import { isRelevantJob, sortJobs } from "../lib/job-utils";
-import TimeAgo from "./TimeAgo";
+import JobCard from "@/components/jobs/JobCard";
+import TimeAgo from "@/components/ui/TimeAgo";
+import { useOpenedJobs } from "@/hooks/useOpenedJobs";
 import { useSeenJobs } from "@/hooks/useSeenJobs";
+import { isRelevantJob, sortJobs } from "@/lib/jobs/filters";
 
 function EmptyJobs() {
   return (
     <div className="rounded-xl border border-dashed border-stone-300 bg-white px-6 py-16 text-center">
       <h2 className="text-lg font-semibold text-stone-900">No jobs yet</h2>
       <p className="mt-2 text-sm text-stone-500">
-        The scraper runs when the app starts, then every 15 minutes. You can
-        also run <code className="rounded bg-stone-100 px-1.5 py-0.5">npm run scrape</code>.
+        The scraper runs every 15 minutes via GitHub Actions. You can also
+        run <code className="rounded bg-stone-100 px-1.5 py-0.5">npm run scrape</code>.
       </p>
     </div>
   );
 }
 
 export default function JobList({ jobs, scrapedAt }) {
-  const [hasMounted, setHasMounted] = useState(false);
   const { isUnread, isReady } = useSeenJobs(jobs);
   const { isOpened, markOpened } = useOpenedJobs();
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+  if (jobs.length === 0) {
+    return <EmptyJobs />;
+  }
 
-  const orderedJobs = sortJobs(jobs, {
-    isUnread: hasMounted ? isUnread : () => false,
-    isRelevant: (job) => isRelevantJob(job, INTEREST_KEYWORDS),
-  });
-
+  const orderedJobs = sortJobs(jobs, { isUnread });
   const unreadCount = orderedJobs.filter((job) => isUnread(job.id)).length;
-  const relevantCount = orderedJobs.filter((job) =>
-    isRelevantJob(job, INTEREST_KEYWORDS),
-  ).length;
+  const relevantCount = orderedJobs.filter(isRelevantJob).length;
 
-  return jobs.length === 0 ? (
-    <EmptyJobs />
-  ) : (
+  return (
     <div>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <p className="text-sm text-stone-500">
@@ -47,7 +36,7 @@ export default function JobList({ jobs, scrapedAt }) {
         </p>
         <p className="text-sm text-stone-500">
           {jobs.length} jobs
-          {hasMounted && isReady ? ` · ${unreadCount} new` : ""} · {relevantCount} relevant
+          {isReady ? ` · ${unreadCount} new` : ""} · {relevantCount} relevant
         </p>
       </div>
 
@@ -57,7 +46,7 @@ export default function JobList({ jobs, scrapedAt }) {
             key={job.id}
             job={job}
             isUnread={isUnread(job.id)}
-            isRelevant={isRelevantJob(job, INTEREST_KEYWORDS)}
+            isRelevant={isRelevantJob(job)}
             isOpened={isOpened(job.id)}
             onOpenJob={markOpened}
           />

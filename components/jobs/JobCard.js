@@ -1,24 +1,6 @@
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import TimeAgo from "./TimeAgo";
-
-function employmentTypeClass(type) {
-  const normalized = (type || "").toLowerCase();
-
-  if (normalized.includes("full")) {
-    return "bg-emerald-100 text-emerald-800";
-  }
-
-  if (normalized.includes("part")) {
-    return "bg-orange-100 text-orange-800";
-  }
-
-  if (normalized.includes("gig")) {
-    return "bg-violet-100 text-violet-800";
-  }
-
-  return "bg-stone-200 text-stone-700";
-}
+import EmploymentTypeBadge from "@/components/ui/EmploymentTypeBadge";
+import TimeAgo from "@/components/ui/TimeAgo";
 
 function CheckIcon() {
   return (
@@ -49,18 +31,7 @@ function leftBarClass({ isUnread, isRelevant }) {
 }
 
 export default function JobCard({ job, isUnread, isRelevant, isOpened, onOpenJob }) {
-  const [hasMounted, setHasMounted] = useState(false);
-
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
-
-  const showOpened = hasMounted && isOpened;
-  const showUnread = hasMounted && isUnread;
-  const barClass = leftBarClass({
-    isUnread: showUnread,
-    isRelevant,
-  });
+  const barClass = leftBarClass({ isUnread, isRelevant });
 
   return (
     <article className="relative rounded-xl border border-stone-300 bg-white p-5 pl-6 shadow-md">
@@ -71,13 +42,7 @@ export default function JobCard({ job, isUnread, isRelevant, isOpened, onOpenJob
           {job.title}
         </h2>
         <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500">
-          {job.employmentType ? (
-            <span
-              className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${employmentTypeClass(job.employmentType)}`}
-            >
-              {job.employmentType}
-            </span>
-          ) : null}
+          <EmploymentTypeBadge type={job.employmentType} className="text-[11px]" />
           {job.salary ? <span>{job.salary}</span> : null}
           <TimeAgo value={job.postedAt} />
         </p>
@@ -95,7 +60,7 @@ export default function JobCard({ job, isUnread, isRelevant, isOpened, onOpenJob
           onClick={() => onOpenJob(job.id)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-stone-700 underline-offset-2 hover:underline"
         >
-          {showOpened ? <CheckIcon /> : null}
+          {isOpened ? <CheckIcon /> : null}
           See job details
         </Link>
         <a

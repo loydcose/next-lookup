@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { formatTimeAgo } from "../lib/job-utils";
+import { formatTimeAgo } from "@/lib/jobs/dates";
 
 export default function TimeAgo({ value, prefix = "" }) {
   const [label, setLabel] = useState("");

@@ -1,29 +1,14 @@
-import { timingSafeEqual } from "node:crypto";
-import { INTEREST_KEYWORDS } from "../../config.js";
+import { allowMethod } from "@/lib/api";
 import {
+  bearerTokenMatches,
   COOKIE_NAME,
   isAuthRequired,
   verifyAuthToken,
-} from "../../lib/auth.js";
-import { upsertJobs } from "../../lib/db.js";
-import { isRelevantJob } from "../../lib/job-utils.js";
-import { canSendAlerts, sendNewJobsAlert } from "../../lib/notify.js";
-import { runScrape } from "../../scraper/jobs.js";
-
-function bearerMatches(header, secret) {
-  if (!header || !secret) {
-    return false;
-  }
-
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const actual = Buffer.from(String(header));
-
-  if (actual.length !== expected.length) {
-    return false;
-  }
-
-  return timingSafeEqual(actual, expected);
-}
+} from "@/lib/auth";
+import { upsertJobs } from "@/lib/db";
+import { isRelevantJob } from "@/lib/jobs/filters";
+import { runScrape } from "@/lib/scraper/run-scrape";
+import { canSendAlerts, sendNewJobsAlert } from "@/lib/telegram";
 
 function hasSiteAccess(req) {
   if (!isAuthRequired()) {
@@ -34,15 +19,13 @@ function hasSiteAccess(req) {
 }
 
 function jobsToNotify(jobs) {
-  return jobs.filter(
-    (job) => !job.notifiedAt && isRelevantJob(job, INTEREST_KEYWORDS),
-  );
+  return jobs.filter((job) => !job.notifiedAt && isRelevantJob(job));
 }
 
+// GET /api/scrape?source=github  (cron, Bearer CRON_SECRET, sends Telegram alerts)
+// GET /api/scrape?source=<other> (signed-in user, no alerts)
 export default async function handler(req, res) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    res.status(405).end("Method Not Allowed");
+  if (!allowMethod(req, res, "GET")) {
     return;
   }
 
@@ -57,7 +40,7 @@ export default async function handler(req, res) {
   const fromGithub = source === "github";
 
   if (fromGithub) {
-    if (!bearerMatches(req.headers.authorization, process.env.CRON_SECRET)) {
+    if (!bearerTokenMatches(req.headers.authorization, process.env.CRON_SECRET)) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }

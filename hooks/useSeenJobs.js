@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useHasHydrated } from "./useHasHydrated";
+import { readIdList, writeIdList } from "@/lib/local-storage";
 
 const STORAGE_KEY = "seenJobIds";
-
-function readSeenIds() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 export function useSeenJobs(jobs) {
   const hasHydrated = useHasHydrated();
@@ -20,19 +12,19 @@ export function useSeenJobs(jobs) {
 
   useEffect(() => {
     if (snapshotRef.current === null) {
-      const storedIds = readSeenIds();
+      const storedIds = readIdList(STORAGE_KEY);
       snapshotRef.current = new Set(storedIds);
       setSeenIdsAtLoad(snapshotRef.current);
       setIsReady(true);
     }
 
-    const nextIds = new Set(readSeenIds());
+    const nextIds = new Set(readIdList(STORAGE_KEY));
 
     for (const job of jobs) {
       nextIds.add(job.id);
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...nextIds]));
+    writeIdList(STORAGE_KEY, nextIds);
   }, [jobs]);
 
   function isUnread(jobId) {

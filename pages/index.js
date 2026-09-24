@@ -1,10 +1,6 @@
 import Head from "next/head";
-import { Geist } from "next/font/google";
-import JobList from "../components/JobList";
-
-const geistSans = Geist({
-  subsets: ["latin"],
-});
+import JobList from "@/components/jobs/JobList";
+import { geistSans } from "@/lib/fonts";
 
 export default function Home({ jobs, scrapedAt }) {
   return (
@@ -30,18 +26,11 @@ export default function Home({ jobs, scrapedAt }) {
 }
 
 export async function getServerSideProps() {
-  const { listJobs } = await import("../lib/db.js");
-  const { shouldKeepJob } = await import("../lib/job-utils.js");
-  const { EXCLUDE_KEYWORDS, JOB_MAX_AGE_DAYS } = await import("../config.js");
+  const { listJobs } = await import("@/lib/db");
+  const { shouldKeepJob } = await import("@/lib/jobs/filters");
   const data = await listJobs();
   const now = Date.now();
-  const jobs = (data.jobs || []).filter((job) =>
-    shouldKeepJob(job, {
-      excludeKeywords: EXCLUDE_KEYWORDS,
-      maxAgeDays: JOB_MAX_AGE_DAYS,
-      now,
-    }),
-  );
+  const jobs = data.jobs.filter((job) => shouldKeepJob(job, now));
 
   return {
     props: {

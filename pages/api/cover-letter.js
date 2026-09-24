@@ -1,5 +1,5 @@
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "openai/gpt-oss-20b";
+import { allowMethod } from "@/lib/api";
+import { groqChat, hasGroqKey, stripFences } from "@/lib/groq";
 
 const PROMPTS = {
   professional: {
@@ -14,23 +14,14 @@ const PROMPTS = {
   },
 };
 
-function stripFences(text) {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/^```(?:\w*)\r?\n([\s\S]*?)\r?\n```$/);
-
-  return (fenced ? fenced[1] : trimmed).trim();
-}
+const REWRITE_ERROR = "Could not rewrite the letter. Try again.";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    res.status(405).end("Method Not Allowed");
+  if (!allowMethod(req, res, "POST")) {
     return;
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
-
-  if (!apiKey) {
+  if (!hasGroqKey()) {
     res.status(503).json({ error: "GROQ_API_KEY is not configured." });
     return;
   }
@@ -45,42 +36,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        temperature: prompt.temperature,
-        reasoning_effort: "low",
-        reasoning_format: "hidden",
-        messages: [
-          { role: "system", content: prompt.system },
-          { role: "user", content: text },
-        ],
-      }),
+    const reply = await groqChat({
+      system: prompt.system,
+      user: text,
+      temperature: prompt.temperature,
     });
-
-    if (!groqRes.ok) {
-      console.error("Groq request failed", groqRes.status);
-      res.status(502).json({ error: "Could not rewrite the letter. Try again." });
-      return;
-    }
-
-    const data = await groqRes.json();
-    const rewritten = stripFences(data.choices?.[0]?.message?.content || "");
+    const rewritten = stripFences(reply);
 
     if (!rewritten) {
-      res.status(502).json({ error: "Could not rewrite the letter. Try again." });
+      res.status(502).json({ error: REWRITE_ERROR });
       return;
     }
 
     res.status(200).json({ text: rewritten });
   } catch (error) {
     console.error("Groq request failed", error);
-    res.status(502).json({ error: "Could not rewrite the letter. Try again." });
+    res.status(502).json({ error: REWRITE_ERROR });
   }
 }
 
