@@ -1,3 +1,4 @@
+import { waitUntil } from "@vercel/functions";
 import { allowMethod } from "@/lib/api";
 import {
   bearerTokenMatches,
@@ -18,12 +19,49 @@ function hasSiteAccess(req) {
   return verifyAuthToken(req.cookies?.[COOKIE_NAME]);
 }
 
+// Wait for the description before alerting, so alerts aren't scored from the snippet alone.
 function jobsToNotify(jobs) {
-  return jobs.filter((job) => !job.notifiedAt && isRelevantJob(job));
+  return jobs.filter(
+    (job) => !job.notifiedAt && job.description && isRelevantJob(job),
+  );
+}
+
+async function sendPendingAlerts(jobs, scrapedAt) {
+  const pending = jobsToNotify(jobs);
+
+  if (pending.length === 0) {
+    return 0;
+  }
+
+  if (!canSendAlerts()) {
+    console.warn("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set");
+    return 0;
+  }
+
+  await sendNewJobsAlert(pending);
+
+  const notifiedAt = new Date().toISOString();
+  const notifiedIds = new Set(pending.map((job) => job.id));
+  const updatedJobs = jobs.map((job) =>
+    notifiedIds.has(job.id) ? { ...job, notifiedAt } : job,
+  );
+
+  await upsertJobs(updatedJobs, scrapedAt);
+  return pending.length;
+}
+
+async function scrapeAndAlert() {
+  const { scrapedAt, jobs, newJobs } = await runScrape();
+  const notified = await sendPendingAlerts(jobs, scrapedAt);
+  console.log(
+    `Cron scrape done: ${jobs.length} jobs, ${newJobs.length} new, ${notified} alerted`,
+  );
 }
 
 // GET /api/scrape?source=github  (cron, Bearer CRON_SECRET, sends Telegram alerts)
-// GET /api/scrape?source=<other> (signed-in user, no alerts)
+//   Responds 202 right away and keeps working in the background, because cron
+//   services time out long before a scrape with description fetches finishes.
+// GET /api/scrape?source=<other> (signed-in user, no alerts, waits for the result)
 export default async function handler(req, res) {
   if (!allowMethod(req, res, "GET")) {
     return;
@@ -44,51 +82,28 @@ export default async function handler(req, res) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-  } else if (!hasSiteAccess(req)) {
+
+    waitUntil(
+      scrapeAndAlert().catch((error) => console.error("Scrape failed:", error)),
+    );
+    res.status(202).json({ ok: true, source, started: true });
+    return;
+  }
+
+  if (!hasSiteAccess(req)) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
 
   try {
     const { scrapedAt, jobs, newJobs } = await runScrape();
-    const payload = {
+    res.status(200).json({
       ok: true,
       source,
       scrapedAt,
       jobCount: jobs.length,
       newCount: newJobs.length,
-      notified: 0,
-    };
-
-    if (!fromGithub) {
-      res.status(200).json(payload);
-      return;
-    }
-
-    const pending = jobsToNotify(jobs);
-
-    if (pending.length === 0) {
-      res.status(200).json(payload);
-      return;
-    }
-
-    if (!canSendAlerts()) {
-      payload.warning = "TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not set";
-      res.status(200).json(payload);
-      return;
-    }
-
-    await sendNewJobsAlert(pending);
-
-    const notifiedAt = new Date().toISOString();
-    const notifiedIds = new Set(pending.map((job) => job.id));
-    const updatedJobs = jobs.map((job) =>
-      notifiedIds.has(job.id) ? { ...job, notifiedAt } : job,
-    );
-
-    await upsertJobs(updatedJobs, scrapedAt);
-    payload.notified = pending.length;
-    res.status(200).json(payload);
+    });
   } catch (error) {
     console.error("Scrape failed:", error);
     res.status(500).json({ error: "Scrape failed." });
