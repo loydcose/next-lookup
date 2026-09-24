@@ -28,16 +28,18 @@ In production, `.github/workflows/scrape.yml` calls `GET /api/scrape?source=gith
 ```
 config/                  Settings you edit by hand
   search.js              Search URL, page size, max job age
-  keywords.js            Interest keywords (starred + alerted) and exclude keywords (dropped)
+  keywords.js            Skill weights, relevance threshold, title exclude keywords
   cover-letter.js        Default cover letter text
 
 lib/                     Server and shared logic
   db.js                  MongoDB access: listJobs, getJobById, upsertJobs
   scraper/
     onlinejobs.js        Fetch + parse onlinejobs.ph pages
-    run-scrape.js        Crawl listing pages, merge with stored jobs, save
+    run-scrape.js        Crawl listing pages, merge, fetch missing descriptions, score, save
   jobs/
-    filters.js           Relevance, exclusion, age filtering, sorting
+    relevance.js         Weighted skill score from title (×2) + description (×1)
+    filters.js           Title exclusion, age filtering, sorting
+    keyword-match.js     Whole-word keyword matching
     dates.js             Parse job dates, "3 hours ago" formatting
   telegram.js            Telegram alert messages
   groq.js                Groq chat client

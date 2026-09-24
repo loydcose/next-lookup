@@ -2,7 +2,8 @@ import JobCard from "@/components/jobs/JobCard";
 import TimeAgo from "@/components/ui/TimeAgo";
 import { useOpenedJobs } from "@/hooks/useOpenedJobs";
 import { useSeenJobs } from "@/hooks/useSeenJobs";
-import { isRelevantJob, sortJobs } from "@/lib/jobs/filters";
+import { sortJobs } from "@/lib/jobs/filters";
+import { isRelevantJob } from "@/lib/jobs/relevance";
 
 function EmptyJobs() {
   return (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import EmploymentTypeBadge from "@/components/ui/EmploymentTypeBadge";
 import TimeAgo from "@/components/ui/TimeAgo";
+import { formatRelevance, jobRelevance } from "@/lib/jobs/relevance";
 
 function CheckIcon() {
   return (
@@ -45,6 +46,9 @@ export default function JobCard({ job, isUnread, isRelevant, isOpened, onOpenJob
           <EmploymentTypeBadge type={job.employmentType} className="text-[11px]" />
           {job.salary ? <span>{job.salary}</span> : null}
           <TimeAgo value={job.postedAt} />
+        </p>
+        <p className="mt-1 text-xs text-stone-400">
+          {formatRelevance(jobRelevance(job))}
         </p>
       </div>
 

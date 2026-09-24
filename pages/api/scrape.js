@@ -6,7 +6,7 @@ import {
   verifyAuthToken,
 } from "@/lib/auth";
 import { upsertJobs } from "@/lib/db";
-import { isRelevantJob } from "@/lib/jobs/filters";
+import { isRelevantJob } from "@/lib/jobs/relevance";
 import { runScrape } from "@/lib/scraper/run-scrape";
 import { canSendAlerts, sendNewJobsAlert } from "@/lib/telegram";
 

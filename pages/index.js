@@ -1,5 +1,6 @@
 import Head from "next/head";
 import JobList from "@/components/jobs/JobList";
+import { RELEVANCE_THRESHOLD } from "@/config/keywords";
 import { geistSans } from "@/lib/fonts";
 
 export default function Home({ jobs, scrapedAt }) {
@@ -15,7 +16,8 @@ export default function Home({ jobs, scrapedAt }) {
           </h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-stone-500">
             Developer listings from OnlineJobs.ph, last 3 days. New posts are
-            highlighted. Matches for React and Next.js get a star.
+            highlighted. Jobs scoring {RELEVANCE_THRESHOLD}+ on your skills are
+            marked blue.
           </p>
         </header>
 

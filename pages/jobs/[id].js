@@ -49,20 +49,24 @@ export async function getServerSideProps({ params }) {
     return { notFound: true };
   }
 
-  let description = job.snippet || "";
+  const { description: storedDescription, ...jobProps } = job;
+  let description = storedDescription || job.snippet || "";
   let descriptionError = null;
 
-  try {
-    const { scrapeJobDescription } = await import("@/lib/scraper/onlinejobs");
-    description = await scrapeJobDescription(job.url);
-  } catch {
-    descriptionError =
-      "Could not load the full job description. Showing the listing snippet instead.";
+  // The scraper stores descriptions; fetch live only if this job doesn't have one yet.
+  if (!storedDescription) {
+    try {
+      const { scrapeJobDescription } = await import("@/lib/scraper/onlinejobs");
+      description = await scrapeJobDescription(job.url);
+    } catch {
+      descriptionError =
+        "Could not load the full job description. Showing the listing snippet instead.";
+    }
   }
 
   return {
     props: {
-      job,
+      job: jobProps,
       description,
       descriptionError,
     },
